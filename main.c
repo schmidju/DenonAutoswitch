@@ -26,16 +26,15 @@ void timer1_deinit (void) {
     TIMSK  &= ~(1 << OCIE1A);                                               // OCIE1A: Interrupt by timer compare    
 }
 
-void adc_init(void) {    
-    ADMUX = (1<<REFS0);               // Set Reference to AVCC and input to ADC0
-    ADCSRA = (1<<ADFR)|(1<<ADEN)      // Enable ADC, set prescaler to 128
-            |(1<<ADPS2)|(1<<ADPS1)
-            |(1<<ADPS0);              // Fadc=Fcpu/prescaler=8000000/128=62.5kHz
-                                      // Fadc should be between 50kHz and 200kHz
-    ADCSRA |= (1<<ADSC);              // Start the first conversion
+void tv_input_init (void) {
+    // set PD2 as input 
+    DDRD &= ~(1<<DDD2);
+    // disable Pull-up 
+    PORTD &= ~(1<<PD2);
 }
-void adc_deinit(void) {
-    ADCSRA = 0x00;
+
+uint8_t get_tv_state (void) {
+    return PIND & (1<<PD2);
 }
 
 /*---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -56,35 +55,35 @@ void sendCommand(uint16_t command)
     irsnd_send_data (&irmp_data, TRUE);
 }
 
+void send_tv_state(uint8_t tv_state) {
+    if (tv_state) {
+        sendCommand(DENON_ON);
+    } else {
+        sendCommand(DENON_OFF);
+    }
+}
+
 int main (void) 
 {    
     cli();
     timer1_init();
     irsnd_init(); 
-    adc_init();                                                          // initialize irsnd
+    tv_input_init();
     sei();    
 
+    // on power connect check the current state of tv and send it to denon
     _delay_ms(200);
+    uint8_t old_tv_state = get_tv_state();
+    send_tv_state(old_tv_state);
 
-    sendCommand(DENON_ON);
-    // on power_on of tv, usb slot is turned on, turned off after 4 seconds and turned on again
-    // lets wait 5 seconds so DENON_OFF is only possible if tv was at least 5 seconds on
-    _delay_ms(5000);
-
-    // set running to 1 only if there is no power los detected
-    uint8_t running = ADC < 1023;
-
-    // loop until powerloss gets detected and settings has been stored
-    while(running)
+    for(;;)
     {
-        if(ADC == 1023){
-            // power loss detected. disable everything to save energy
-            adc_deinit();
-            sendCommand(DENON_OFF);
-            running = FALSE;
+        _delay_ms(200);
+        uint8_t tv_state = get_tv_state();
+        // detect state change of tv
+        if (old_tv_state != tv_state) {
+            send_tv_state(tv_state);
+            old_tv_state = tv_state;
         }
     }
-
-    // main() will never be left
-    for(;;);
 }

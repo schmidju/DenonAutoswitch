@@ -4,11 +4,11 @@ SOURCES=main.c irsnd/irsnd.c
 
 PROGRAMMER=usbasp
 F_CPU=4000000UL
-#auskommentieren für automatische Wahl
+#auskommentieren fï¿½r automatische Wahl
 #PORT=-P/dev/ttyS0
 #BAUD=-B115200
 
-#Ab hier nichts verändern
+#Ab hier nichts verï¿½ndern
 OBJECTS=$(SOURCES:.c=.o)
 CFLAGS=-c -Os -DF_CPU=$(F_CPU)
 LDFLAGS=
@@ -34,7 +34,7 @@ $(TARGET).elf: $(OBJECTS)
 size:
 	avr-size --mcu=$(MCU) -C $(TARGET).elf
 
-program:
+program: all
 	avrdude -p$(MCU) $(PORT) $(BAUD) -c$(PROGRAMMER) -Uflash:w:$(TARGET).hex:a
 
 fuse:
